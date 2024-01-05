@@ -2,13 +2,14 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/gen2brain/beeep"
+	"github.com/getlantern/systray"
 )
 
 var (
@@ -16,29 +17,70 @@ var (
 
 	ErrNoReminders = errors.New("no data in file to read")
 
-	notificationFrequency = time.Second * 10
+	// notificationFrequency = time.Second * 10
 )
 
 func main() {
+	systray.Run(onReady, onExit)
+}
 
-	for {
+func onReady() {
 
-		reminders, err := getReminders()
-		if err != nil {
-			log.Fatal("Failed to read reminders: ", err)
+	// https://github.com/microsoft/Windows-classic-samples/blob/44d192fd7ec6f2422b7d023891c5f805ada2c811/Samples/Win7Samples/begin/sdkdiff/sdkdiff.ico
+	ico, err := os.ReadFile("assets/icon.ico")
+	if err != nil {
+		log.Fatal("Failed to read icon: ", err)
+	}
+
+	// build our systray app
+
+	systray.SetIcon(ico)
+	systray.SetTitle("btw")
+	systray.SetTooltip("btw: reminders")
+	mQuit := systray.AddMenuItem("Quit", "Close the program")
+	mRemindNow := systray.AddMenuItem("Remind me now", "Sends an on-demand random reminder")
+
+
+	// event handlers (the way this works is so nice)
+	go func() {
+		for {
+			select {
+			case <-mRemindNow.ClickedCh:
+				fmt.Println("Reminder requested!")
+				sendRandomReminder()
+			case <-mQuit.ClickedCh:
+				fmt.Println("Requesting quit")
+				systray.Quit()
+				fmt.Println("Finished quitting")
+				return
+			}
 		}
 
-		reminderToShow := pickReminder(reminders)
+	}()
+}
 
-		err = beeep.Notify("btw", reminderToShow, "")
-		if err != nil {
-			panic(err)
-		}
+func onExit() {
+	fmt.Println("onExit")
+}
 
+// sendRandomReminder selects a random item from the users reminders list and sends it as a tray notification
+func sendRandomReminder() {
+	reminders, err := getReminders()
+	if err != nil {
+		log.Fatal("Failed to read reminders: ", err)
+	}
 
-		time.Sleep(notificationFrequency)
+	reminderToShow := pick(reminders)
+
+	fmt.Println("showing reminder: ", reminderToShow)
+
+	err = beeep.Notify("btw", reminderToShow, "")
+	if err != nil {
+		fmt.Println("ERROR: Failed to send reminder: ", err)
 	}
 }
+
+
 
 // getReminders returns all the lines in the reminders file as a string array
 func getReminders() ([]string, error) {
@@ -59,7 +101,8 @@ func getReminders() ([]string, error) {
 	return fileDataSplit, nil
 }
 
-func pickReminder(choices []string) string {
+// pick picks a random item from the input list choices
+func pick(choices []string) string {
 	i := rand.Intn(len(choices))
 
 	return choices[i]
