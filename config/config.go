@@ -63,3 +63,10 @@ func Read() (*AppConfig, error) {
 
 	return out, nil
 }
+
+func Path() string {
+	AppDataPath := path.Clean(os.Getenv("APPDATA"))
+	configPath := AppDataPath + "\\btw_reminders" + "\\config.json"
+
+	return configPath
+}

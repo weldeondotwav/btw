@@ -5,7 +5,7 @@ go 1.21.1
 require github.com/getlantern/systray v1.2.2
 
 require (
-	github.com/gen2brain/beeep v0.0.0-20230907135156-1a38885a97fc // indirect
+	github.com/gen2brain/beeep v0.0.0-20230907135156-1a38885a97fc
 	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect
 	github.com/getlantern/errors v0.0.0-20190325191628-abdb3e3e36f7 // indirect
 	github.com/getlantern/golog v0.0.0-20190830074920-4ef2e798c2d7 // indirect
