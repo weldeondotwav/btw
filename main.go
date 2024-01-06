@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gen2brain/beeep"
@@ -24,23 +26,22 @@ var (
 	Config *config.AppConfig
 
 	StartupDelay = time.Minute
+
+	// https://github.com/microsoft/Windows-classic-samples/blob/44d192fd7ec6f2422b7d023891c5f805ada2c811/Samples/Win7Samples/begin/sdkdiff/sdkdiff.ico
+	//go:embed assets/icon.ico
+	iconData []byte
 )
 
 func main() {
+	fmt.Println("OPEN")
+	defer fmt.Println("CLOSE")
 	systray.Run(onReady, onExit)
 }
 
 func onReady() {
-
-	// https://github.com/microsoft/Windows-classic-samples/blob/44d192fd7ec6f2422b7d023891c5f805ada2c811/Samples/Win7Samples/begin/sdkdiff/sdkdiff.ico
-	ico, err := os.ReadFile("assets/icon.ico")
-	if err != nil {
-		log.Fatal("Failed to read icon: ", err)
-	}
-
 	// build our systray app
 
-	systray.SetIcon(ico)
+	systray.SetIcon(iconData)
 	systray.SetTitle("btw")
 	systray.SetTooltip("btw: reminders")
 	mRemindNow := systray.AddMenuItem("Remind me now", "Sends an on-demand random reminder")
@@ -90,12 +91,14 @@ func onExit() {
 func openRemindersFile() {
 	filePathAbs := filepath.Clean(Config.RemindersFilePath)
 	openCmd := exec.Command("cmd", "/c", filePathAbs)
+	openCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true} 
 	openCmd.Start()
 }
 
 // openConfigFile opens the application config file in the system default editor for .json files
 func openConfigFile() {
 	openCmd := exec.Command("cmd", "/c", config.Path())
+	openCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true} 
 	openCmd.Start()
 }
 
