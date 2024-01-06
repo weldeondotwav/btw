@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
@@ -21,6 +22,8 @@ var (
 	ErrNoReminders = errors.New("no data in file to read")
 
 	Config *config.AppConfig
+
+	StartupDelay = time.Minute
 
 	// notificationFrequency = time.Second * 10
 )
@@ -68,6 +71,17 @@ func onReady() {
 			}
 		}
 	}()
+
+	fmt.Println("Startup Delay: ", StartupDelay)
+	time.Sleep(StartupDelay)
+
+	go func() {
+		for {
+			sendRandomReminder()
+			time.Sleep(Config.ReminderPeriod)
+		}
+	}()
+
 }
 
 func onExit() {

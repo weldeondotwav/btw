@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"time"
 )
 
 type AppConfig struct {
-	RemindersFilePath string `json:"reminders_file_path,omitempty"`
+	RemindersFilePath string        `json:"reminders_file_path,omitempty"`
+	ReminderPeriod    time.Duration `json:"reminder_period,omitempty"`
 }
 
 func NewDefaultConfig() AppConfig {
@@ -19,6 +21,7 @@ func NewDefaultConfig() AppConfig {
 
 	return AppConfig{
 		RemindersFilePath: configPath,
+		ReminderPeriod: time.Hour,
 	}
 }
 
