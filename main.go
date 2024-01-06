@@ -19,8 +19,6 @@ import (
 )
 
 var (
-	RemindersFilePath = "./reminders.txt"
-
 	ErrNoReminders = errors.New("no data in file to read")
 
 	Config *config.AppConfig
@@ -33,8 +31,6 @@ var (
 )
 
 func main() {
-	fmt.Println("OPEN")
-	defer fmt.Println("CLOSE")
 	systray.Run(onReady, onExit)
 }
 
@@ -84,7 +80,7 @@ func onReady() {
 }
 
 func onExit() {
-	fmt.Println("onExit")
+	fmt.Println("btw closing")
 }
 
 // openRemindersFile opens the reminders file in the system default editor for .txt files
