@@ -1,2 +1,4 @@
+# Lines starting with # or empty lines are ignored
+
 clean living room
 check mail

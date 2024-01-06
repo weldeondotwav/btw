@@ -6,6 +6,8 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/gen2brain/beeep"
@@ -39,7 +41,7 @@ func onReady() {
 	systray.SetTooltip("btw: reminders")
 	mQuit := systray.AddMenuItem("Quit", "Close the program")
 	mRemindNow := systray.AddMenuItem("Remind me now", "Sends an on-demand random reminder")
-
+	mEditFile := systray.AddMenuItem("Open reminders file", "Opens the reminders file in the default text editor")
 
 	// event handlers (the way this works is so nice)
 	go func() {
@@ -48,6 +50,8 @@ func onReady() {
 			case <-mRemindNow.ClickedCh:
 				fmt.Println("Reminder requested!")
 				sendRandomReminder()
+			case <-mEditFile.ClickedCh:
+				openRemindersFile()
 			case <-mQuit.ClickedCh:
 				fmt.Println("Requesting quit")
 				systray.Quit()
@@ -61,6 +65,19 @@ func onReady() {
 
 func onExit() {
 	fmt.Println("onExit")
+}
+
+// openRemindersFile opens the reminders file in the system default editor for .txt files
+func openRemindersFile() {
+	filePathAbs, err := filepath.Abs(RemindersFilePath)
+	if err != nil {
+		log.Fatal("Failed to find absolute path of reminders file")
+	}
+
+	openCmd := exec.Command("cmd", "/c", filePathAbs)
+
+	openCmd.Start()
+
 }
 
 // sendRandomReminder selects a random item from the users reminders list and sends it as a tray notification
@@ -80,8 +97,6 @@ func sendRandomReminder() {
 	}
 }
 
-
-
 // getReminders returns all the lines in the reminders file as a string array
 func getReminders() ([]string, error) {
 	fileData, err := os.ReadFile(RemindersFilePath)
@@ -97,8 +112,19 @@ func getReminders() ([]string, error) {
 	fileDataString := string(fileData)
 
 	fileDataSplit := strings.Split(fileDataString, "\n")
+	// filter out comments
+	filteredLines := make([]string, 0)
 
-	return fileDataSplit, nil
+	for _, v := range fileDataSplit {
+		if v[0] == '#' ||
+			strings.TrimSpace(v) == "" {
+			continue
+		} else {
+			filteredLines = append(filteredLines, v)
+		}
+	}
+
+	return filteredLines, nil
 }
 
 // pick picks a random item from the input list choices
