@@ -28,6 +28,8 @@ var (
 	// https://github.com/microsoft/Windows-classic-samples/blob/44d192fd7ec6f2422b7d023891c5f805ada2c811/Samples/Win7Samples/begin/sdkdiff/sdkdiff.ico
 	//go:embed assets/icon.ico
 	iconData []byte
+
+	DefaultRemindersFileContent = "# Lines starting with # or empty lines are ignored\n\nclean living room\ncheck mail"
 )
 
 func main() {
@@ -36,7 +38,6 @@ func main() {
 
 func onReady() {
 	// build our systray app
-
 	systray.SetIcon(iconData)
 	systray.SetTitle("btw")
 	systray.SetTooltip("btw: reminders")
@@ -57,9 +58,9 @@ func onReady() {
 				fmt.Println("Reminder requested!")
 				sendRandomReminder()
 			case <-mEditFile.ClickedCh:
-				openRemindersFile()
+				openFileWithDefault(Config.RemindersFilePath)
 			case <-mEditConfig.ClickedCh:
-				openConfigFile()
+				openFileWithDefault(config.Path())
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 				return
@@ -83,18 +84,10 @@ func onExit() {
 	fmt.Println("btw closing")
 }
 
-// openRemindersFile opens the reminders file in the system default editor for .txt files
-func openRemindersFile() {
-	filePathAbs := filepath.Clean(Config.RemindersFilePath)
-	openCmd := exec.Command("cmd", "/c", filePathAbs)
-	openCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true} 
-	openCmd.Start()
-}
-
-// openConfigFile opens the application config file in the system default editor for .json files
-func openConfigFile() {
-	openCmd := exec.Command("cmd", "/c", config.Path())
-	openCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true} 
+// openFileWithDefault opens the file at path with the default application for that file type
+func openFileWithDefault(path string) {
+	openCmd := exec.Command("cmd", "/c", filepath.Clean(path))
+	openCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	openCmd.Start()
 }
 
@@ -126,21 +119,19 @@ func getReminders() ([]string, error) {
 		return nil, ErrNoReminders
 	}
 
-	fileDataString := string(fileData)
-
-	fileDataSplit := strings.Split(fileDataString, "\n")
+	fileDataSplit := strings.Split(string(fileData), "\n")
 
 	// filter out comments
 	filteredLines := make([]string, 0)
 
 	for _, v := range fileDataSplit {
 		if len(v) < 1 {
-			continue
+			continue // ignore empty lines
 		}
 
 		if v[0] == '#' ||
 			strings.TrimSpace(v) == "" {
-			continue
+			continue // ignore comments
 		} else {
 			filteredLines = append(filteredLines, v)
 		}
@@ -148,13 +139,13 @@ func getReminders() ([]string, error) {
 	return filteredLines, nil
 }
 
-// pick picks a random item from the input list choices
+// pick returns a random item from the input list choices
 func pick(choices []string) string {
 	i := rand.Intn(len(choices))
 	return choices[i]
 }
 
-// Loads the user config, or creates one if it doesn't exist
+// Loads the user config, creating it if it doesn't exist
 func loadConfig() {
 	conf, err := config.Read()
 	if err != nil {
@@ -163,14 +154,14 @@ func loadConfig() {
 		if errors.Is(err, os.ErrNotExist) {
 			fmt.Println("Creating default config...")
 
-			exConfig := config.NewDefaultConfig()
+			defaultConfig := config.NewDefaultConfig()
 
-			err = exConfig.Save()
+			err = defaultConfig.Save()
 			if err != nil {
 				log.Fatal("Failed to save config! ", err)
 			}
 
-			conf = &exConfig
+			conf = &defaultConfig
 
 		} else {
 			log.Fatal("Unhandled error while loading user config: ", err)
@@ -178,7 +169,7 @@ func loadConfig() {
 	}
 
 	fmt.Println("Loaded config")
-	Config = conf
+	Config = conf // save the config object to our global var
 
 	// Also create the reminders file if it doesn't exist
 	_, err = os.Stat(conf.RemindersFilePath)
@@ -193,7 +184,7 @@ func loadConfig() {
 		}
 		defer f.Close()
 
-		_, err = f.WriteString("# Lines starting with # or empty lines are ignored\n\nclean living room\ncheck mail")
+		_, err = f.WriteString(DefaultRemindersFileContent)
 		if err != nil {
 			fmt.Println("ERROR: Failed to write default template to new reminders file: ", err)
 		}
