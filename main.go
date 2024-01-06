@@ -24,8 +24,6 @@ var (
 	Config *config.AppConfig
 
 	StartupDelay = time.Minute
-
-	// notificationFrequency = time.Second * 10
 )
 
 func main() {
