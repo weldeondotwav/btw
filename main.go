@@ -12,12 +12,15 @@ import (
 
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
+	"github.com/weldeondotwav/btw/config"
 )
 
 var (
 	RemindersFilePath = "./reminders.txt"
 
 	ErrNoReminders = errors.New("no data in file to read")
+
+	Config *config.AppConfig
 
 	// notificationFrequency = time.Second * 10
 )
@@ -39,9 +42,12 @@ func onReady() {
 	systray.SetIcon(ico)
 	systray.SetTitle("btw")
 	systray.SetTooltip("btw: reminders")
-	mQuit := systray.AddMenuItem("Quit", "Close the program")
 	mRemindNow := systray.AddMenuItem("Remind me now", "Sends an on-demand random reminder")
 	mEditFile := systray.AddMenuItem("Open reminders file", "Opens the reminders file in the default text editor")
+
+	mQuit := systray.AddMenuItem("Quit", "Close the program")
+
+	loadConfig()
 
 	// event handlers (the way this works is so nice)
 	go func() {
@@ -55,7 +61,6 @@ func onReady() {
 			case <-mQuit.ClickedCh:
 				fmt.Println("Requesting quit")
 				systray.Quit()
-				fmt.Println("Finished quitting")
 				return
 			}
 		}
@@ -69,10 +74,7 @@ func onExit() {
 
 // openRemindersFile opens the reminders file in the system default editor for .txt files
 func openRemindersFile() {
-	filePathAbs, err := filepath.Abs(RemindersFilePath)
-	if err != nil {
-		log.Fatal("Failed to find absolute path of reminders file")
-	}
+	filePathAbs := filepath.Clean(Config.RemindersFilePath)
 
 	openCmd := exec.Command("cmd", "/c", filePathAbs)
 
@@ -99,7 +101,7 @@ func sendRandomReminder() {
 
 // getReminders returns all the lines in the reminders file as a string array
 func getReminders() ([]string, error) {
-	fileData, err := os.ReadFile(RemindersFilePath)
+	fileData, err := os.ReadFile(Config.RemindersFilePath)
 
 	if err != nil {
 		return nil, err
@@ -112,10 +114,14 @@ func getReminders() ([]string, error) {
 	fileDataString := string(fileData)
 
 	fileDataSplit := strings.Split(fileDataString, "\n")
+
 	// filter out comments
 	filteredLines := make([]string, 0)
 
 	for _, v := range fileDataSplit {
+		if len(v) < 1 {
+			continue
+		}
 		if v[0] == '#' ||
 			strings.TrimSpace(v) == "" {
 			continue
@@ -132,4 +138,52 @@ func pick(choices []string) string {
 	i := rand.Intn(len(choices))
 
 	return choices[i]
+}
+
+// Loads the user config, or creates one if it doesn't exist
+func loadConfig() {
+
+	conf, err := config.Read()
+	if err != nil {
+		fmt.Println("ERROR: Failed to read config:", err)
+
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Println("Creating default config...")
+			exConfig := config.NewDefaultConfig()
+			err = exConfig.Save()
+			if err != nil {
+				log.Fatal("Failed to save config! ", err)
+			}
+
+			conf = &exConfig
+		} else {
+			log.Fatal("Unhandled error while loading user config: ", err)
+		}
+
+	}
+
+	fmt.Println("Loaded config")
+
+	Config = conf
+
+	// Also create the reminders file if it doesn't exist
+	_, err = os.Stat(conf.RemindersFilePath)
+	if err != nil {
+		fmt.Println("StatRemindersErr", err)
+		// need to check the err first frfr
+		fmt.Println("Reminders file not found, creating it at ", conf.RemindersFilePath)
+		f, err := os.Create(conf.RemindersFilePath)
+		if err != nil {
+			log.Fatal("Failed to create reminders file: ", err)
+		}
+		defer f.Close()
+
+		_, err = f.WriteString(
+			"# Lines starting with # or empty lines are ignored\n\nclean living room\ncheck mail")
+		if err != nil {
+			fmt.Println("ERROR: Failed to write default template to new reminders file: ", err)
+		}
+
+	}
+
 }
