@@ -21,14 +21,16 @@ import (
 var (
 	ErrNoReminders = errors.New("no data in file to read")
 
-	Config *config.AppConfig
+	Config *config.AppConfig // the user's config, as read from their config file
 
-	StartupDelay = time.Minute
+	StartupDelay = time.Minute // delay before the first reminder is sent after the app starts
 
+	// app icon
 	// https://github.com/microsoft/Windows-classic-samples/blob/44d192fd7ec6f2422b7d023891c5f805ada2c811/Samples/Win7Samples/begin/sdkdiff/sdkdiff.ico
 	//go:embed assets/icon.ico
 	iconData []byte
 
+	// The content that we stick in the reminders file if we create a new one
 	DefaultRemindersFileContent = "# Lines starting with # or empty lines are ignored\n\nclean living room\ncheck mail"
 )
 
@@ -41,6 +43,8 @@ func onReady() {
 	systray.SetIcon(iconData)
 	systray.SetTitle("btw")
 	systray.SetTooltip("btw: reminders")
+
+	// With the systray library, adding a menu item returns a pointer to the item, which we can then use to listen for events via channels
 	mRemindNow := systray.AddMenuItem("Remind me now", "Sends an on-demand random reminder")
 	mEditFile := systray.AddMenuItem("Open reminders file", "Opens the reminders file in the default text editor")
 	mEditConfig := systray.AddMenuItem("Open app config", "Opens the application config in the default text editor")
@@ -60,7 +64,7 @@ func onReady() {
 			case <-mEditFile.ClickedCh:
 				openFileWithDefault(Config.RemindersFilePath)
 			case <-mEditConfig.ClickedCh:
-				openFileWithDefault(config.Path())
+				openFileWithDefault(config.DefaultPath())
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 				return
@@ -107,7 +111,7 @@ func sendRandomReminder() {
 	}
 }
 
-// getReminders returns all the lines in the reminders file as a string array
+// getReminders returns all the lines in the reminders file as a string array. contains the logic for parsing the file
 func getReminders() ([]string, error) {
 	fileData, err := os.ReadFile(Config.RemindersFilePath)
 
@@ -121,7 +125,7 @@ func getReminders() ([]string, error) {
 
 	fileDataSplit := strings.Split(string(fileData), "\n")
 
-	// filter out comments
+	// we'll filter out lines that we don't need
 	filteredLines := make([]string, 0)
 
 	for _, v := range fileDataSplit {
@@ -133,7 +137,7 @@ func getReminders() ([]string, error) {
 			strings.TrimSpace(v) == "" {
 			continue // ignore comments
 		} else {
-			filteredLines = append(filteredLines, v)
+			filteredLines = append(filteredLines, v) // line is good, add it to the list
 		}
 	}
 	return filteredLines, nil
@@ -145,7 +149,7 @@ func pick(choices []string) string {
 	return choices[i]
 }
 
-// Loads the user config, creating it if it doesn't exist
+// Loads the user config, creating it if it doesn't exist. The read config is stored in the Config var
 func loadConfig() {
 	conf, err := config.Read()
 	if err != nil {

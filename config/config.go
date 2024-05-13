@@ -21,10 +21,11 @@ func NewDefaultConfig() AppConfig {
 
 	return AppConfig{
 		RemindersFilePath: configPath,
-		ReminderPeriod: time.Hour,
+		ReminderPeriod:    time.Hour,
 	}
 }
 
+// Save writes the config to appdata
 func (c *AppConfig) Save() error {
 	fmt.Println("Saving config...")
 	AppDataPath := path.Clean(os.Getenv("APPDATA"))
@@ -48,7 +49,7 @@ func (c *AppConfig) Save() error {
 	return nil
 }
 
-// Loads the config as long as its in the normal spot
+// Read loads the config from the user's appdata
 func Read() (*AppConfig, error) {
 	AppDataPath := path.Clean(os.Getenv("APPDATA"))
 	configPath := AppDataPath + "\\btw_reminders" + "\\config.json"
@@ -67,7 +68,8 @@ func Read() (*AppConfig, error) {
 	return out, nil
 }
 
-func Path() string {
+// DefaultPath returns the path to store the config file within the users appdata directory
+func DefaultPath() string {
 	AppDataPath := path.Clean(os.Getenv("APPDATA"))
 	configPath := AppDataPath + "\\btw_reminders" + "\\config.json"
 
